@@ -46,5 +46,18 @@ pipeline {
                 }
             }
         }
+
+        stage('Security') {
+            steps {
+                echo 'Running security analysis with Bandit...'
+                bat 'venv\\Scripts\\pip install bandit'
+                bat 'venv\\Scripts\\bandit -r . -f html -o security_report.html'
+            }
+            post {
+                always {
+                    archiveArtifacts artifacts: 'security_report.html', fingerprint: true
+                }
+            }
+        }
     }
 }
