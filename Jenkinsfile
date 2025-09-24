@@ -51,7 +51,7 @@ pipeline {
             steps {
                 echo 'Running security analysis with Bandit...'
                 bat 'venv\\Scripts\\pip install bandit'
-                bat 'venv\\Scripts\\bandit -r . -f html -o security_report.html'
+                bat(script: 'venv\\Scripts\\bandit -r . -f html -o security_report.html', returnStatus: true)
             }
             post {
                 always {
