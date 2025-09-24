@@ -31,5 +31,14 @@ pipeline {
                 echo 'Jenkins is connected to GitHub successfully!'
             }
         }
+	stage('Code Quality') {
+    		steps {
+     	        withSonarQubeEnv('SonarQube') {
+                bat 'sonar-scanner -Dsonar.projectKey=SIT753-7.3HD ' +
+                '-Dsonar.sources=. ' +
+                '-Dsonar.host.url=http://localhost:9000 ' +
+                "-Dsonar.login=${env.SONAR_QUBE_TOKEN}"
+       		 }
+   	}
     }
 }
