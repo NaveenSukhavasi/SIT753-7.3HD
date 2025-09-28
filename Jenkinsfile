@@ -42,11 +42,11 @@ pipeline {
             steps {
                 withSonarQubeEnv('SonarQube') {
                     bat """
-                        sonar-scanner ^
-                            -Dsonar.projectKey=SIT753-7.3HD ^
-                            -Dsonar.sources=. ^
-                            -Dsonar.host.url=http://localhost:9000 ^
-                            -Dsonar.token=${env.SONAR_QUBE_TOKEN}
+                    sonar-scanner ^
+                        -Dsonar.projectKey=SIT753-7.3HD ^
+                        -Dsonar.sources=. ^
+                        -Dsonar.host.url=http://localhost:9000 ^
+                        -Dsonar.token=%SONAR_QUBE_TOKEN%
                     """
                 }
             }
@@ -68,8 +68,11 @@ pipeline {
         stage('Deploy') {
             steps {
                 script {
-                    // Use Jenkins environment variable or default to main
-                    def branch = env.BRANCH_NAME ?: 'main'
+                    // Fix branch detection for Windows
+                    def branch = env.BRANCH_NAME
+                    if (!branch) {
+                        branch = bat(script: 'git rev-parse --abbrev-ref HEAD', returnStdout: true).trim().replaceAll("\\r","")
+                    }
                     echo "Current branch: ${branch}"
 
                     if (branch.equalsIgnoreCase('main')) {
@@ -85,9 +88,11 @@ pipeline {
 
         stage('Release') {
             steps {
-                echo 'Promoting application to production...'
-                bat 'docker compose -f docker-compose.prod.yml up -d --build'
-                echo 'Production deployment completed successfully!'
+                script {
+                    echo 'Promoting application to production...'
+                    bat 'docker compose -f docker-compose.prod.yml up -d --build'
+                    echo 'Production deployment completed successfully!'
+                }
             }
         }
 
@@ -95,10 +100,7 @@ pipeline {
             steps {
                 script {
                     echo 'Checking if production app is running...'
-                    def response = bat(
-                        script: 'powershell -Command "(Invoke-WebRequest http://localhost:8081).StatusCode"',
-                        returnStdout: true
-                    ).trim()
+                    def response = bat(script: 'curl -s -o NUL -w "%{http_code}" http://localhost:8081', returnStdout: true).trim().replaceAll("\\r","")
 
                     if (response != '200') {
                         error "ALERT: Production application is NOT responding! HTTP status: ${response}"
