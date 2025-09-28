@@ -1,7 +1,5 @@
-venv/
-.git
-.gitignore
+.venv/
+.git/
+*.env
 *.pyc
 __pycache__/
-*.env
-security_report.html
