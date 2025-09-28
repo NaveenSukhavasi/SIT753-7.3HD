@@ -4,7 +4,9 @@ RUN useradd --create-home appuser
 
 WORKDIR /app
 
-COPY . /app
+COPY app.py requirements.txt /app/
+COPY templates/ /app/templates/
+COPY static/ /app/static/
 
 RUN pip install --no-cache-dir -r requirements.txt
 
