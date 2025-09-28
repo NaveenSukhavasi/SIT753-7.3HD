@@ -29,7 +29,6 @@ pipeline {
         stage('Test') {
             steps {
                 echo 'Running unit tests with coverage...'
-                // Use python -m pytest so the venv executable is recognized
                 bat 'venv\\Scripts\\python -m pip install pytest pytest-cov'
                 bat 'venv\\Scripts\\python -m pytest --cov=app --cov-report xml:coverage.xml test_app.py'
             }
@@ -49,7 +48,7 @@ pipeline {
                             -Dsonar.projectKey=SIT753-7.3HD ^
                             -Dsonar.sources=. ^
                             -Dsonar.host.url=http://localhost:9000 ^
-                            -Dsonar.login=%SONAR_QUBE_TOKEN% ^
+                            -Dsonar.token=%SONAR_QUBE_TOKEN% ^
                             -Dsonar.python.coverage.reportPaths=coverage.xml
                     """
                 }
@@ -97,7 +96,15 @@ pipeline {
             steps {
                 script {
                     echo 'Checking if production app is running...'
-                    def response = bat(script: "curl -s -o NUL -w \"%{http_code}\" http://localhost:%FLASK_PORT%", returnStdout: true).trim().replaceAll("\\r","")
+
+                    // NOTE: For Windows batch we MUST escape the % in curl's -w format by doubling it.
+                    def response = bat(
+                        script: 'curl -s -o NUL -w "%%{http_code}" http://localhost:%FLASK_PORT%',
+                        returnStdout: true
+                    ).trim().replaceAll("\\r","")
+
+                    echo "curl returned: ${response}"
+
                     if (response != '200') {
                         error "ALERT: Production application is NOT responding! HTTP status: ${response}"
                     } else {
