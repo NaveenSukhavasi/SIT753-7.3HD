@@ -28,11 +28,10 @@ pipeline {
 
         stage('Test') {
             steps {
-                echo 'Running automated tests...'
-                // Run Flask app in background for Monitoring & Alerting
+                echo 'Starting Flask app in background for integration tests...'
                 bat 'start /B venv\\Scripts\\python app.py'
-                // Run unit tests
-                bat 'venv\\Scripts\\python test_app.py'
+                echo 'Running unit tests with coverage...'
+                bat 'venv\\Scripts\\pytest --cov=app --cov-report xml:coverage.xml test_app.py'
             }
         }
 
@@ -50,7 +49,8 @@ pipeline {
                             -Dsonar.projectKey=SIT753-7.3HD ^
                             -Dsonar.sources=. ^
                             -Dsonar.host.url=http://localhost:9000 ^
-                            -Dsonar.token=%SONAR_QUBE_TOKEN%
+                            -Dsonar.login=%SONAR_QUBE_TOKEN% ^
+                            -Dsonar.python.coverage.reportPaths=coverage.xml
                     """
                 }
             }
@@ -71,33 +71,25 @@ pipeline {
             }
         }
 
-        stage('Deploy') {
+        stage('Deploy to Staging') {
+            when {
+                expression { env.BRANCH_NAME == 'main' || !env.BRANCH_NAME }
+            }
             steps {
-                script {
-                    def branch = env.BRANCH_NAME
-                    if (!branch) {
-                        branch = bat(script: 'git rev-parse --abbrev-ref HEAD', returnStdout: true).trim().replaceAll("\\r","")
-                    }
-                    echo "Current branch: ${branch}"
-
-                    if (branch.equalsIgnoreCase('main')) {
-                        echo 'Deploying application to staging environment...'
-                        bat 'docker compose -f docker-compose.staging.yml up -d --build'
-                        echo 'Staging deployment completed successfully!'
-                    } else {
-                        echo "Skipping staging deployment: not on main branch."
-                    }
-                }
+                echo 'Deploying application to staging environment...'
+                bat 'docker compose -f docker-compose.staging.yml up -d --build'
+                echo 'Staging deployment completed successfully!'
             }
         }
 
-        stage('Release') {
+        stage('Release to Production') {
+            when {
+                expression { env.BRANCH_NAME == 'main' || !env.BRANCH_NAME }
+            }
             steps {
-                script {
-                    echo 'Promoting application to production...'
-                    bat 'docker compose -f docker-compose.prod.yml up -d --build'
-                    echo 'Production deployment completed successfully!'
-                }
+                echo 'Promoting application to production...'
+                bat 'docker compose -f docker-compose.prod.yml up -d --build'
+                echo 'Production deployment completed successfully!'
             }
         }
 
@@ -106,7 +98,6 @@ pipeline {
                 script {
                     echo 'Checking if production app is running...'
                     def response = bat(script: "curl -s -o NUL -w \"%{http_code}\" http://localhost:%FLASK_PORT%", returnStdout: true).trim().replaceAll("\\r","")
-
                     if (response != '200') {
                         error "ALERT: Production application is NOT responding! HTTP status: ${response}"
                     } else {
@@ -121,6 +112,10 @@ pipeline {
     post {
         always {
             echo 'Pipeline finished.'
+        }
+        cleanup {
+            echo 'Stopping background Flask app if running...'
+            bat 'taskkill /F /IM python.exe || echo Flask app not running'
         }
     }
 }
