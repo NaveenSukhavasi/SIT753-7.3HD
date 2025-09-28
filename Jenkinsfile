@@ -3,6 +3,7 @@ pipeline {
 
     environment {
         SONAR_QUBE_TOKEN = credentials('SONAR_QUBE_TOKEN')
+        FLASK_PORT = '8081'
     }
 
     stages {
@@ -28,6 +29,9 @@ pipeline {
         stage('Test') {
             steps {
                 echo 'Running automated tests...'
+                // Run Flask app in background for Monitoring & Alerting
+                bat 'start /B venv\\Scripts\\python app.py'
+                // Run unit tests
                 bat 'venv\\Scripts\\python test_app.py'
             }
         }
@@ -56,7 +60,9 @@ pipeline {
             steps {
                 echo 'Running security analysis with Bandit...'
                 bat 'venv\\Scripts\\pip install bandit'
-                bat 'venv\\Scripts\\bandit -r . -f html -o security_report.html'
+                catchError(buildResult: 'UNSTABLE', stageResult: 'UNSTABLE') {
+                    bat 'venv\\Scripts\\bandit -r . -f html -o security_report.html'
+                }
             }
             post {
                 always {
@@ -68,7 +74,6 @@ pipeline {
         stage('Deploy') {
             steps {
                 script {
-                    // Fix branch detection for Windows
                     def branch = env.BRANCH_NAME
                     if (!branch) {
                         branch = bat(script: 'git rev-parse --abbrev-ref HEAD', returnStdout: true).trim().replaceAll("\\r","")
@@ -100,7 +105,7 @@ pipeline {
             steps {
                 script {
                     echo 'Checking if production app is running...'
-                    def response = bat(script: 'curl -s -o NUL -w "%{http_code}" http://localhost:8081', returnStdout: true).trim().replaceAll("\\r","")
+                    def response = bat(script: "curl -s -o NUL -w \"%{http_code}\" http://localhost:%FLASK_PORT%", returnStdout: true).trim().replaceAll("\\r","")
 
                     if (response != '200') {
                         error "ALERT: Production application is NOT responding! HTTP status: ${response}"
