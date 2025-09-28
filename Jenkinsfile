@@ -64,7 +64,7 @@ pipeline {
         stage('Deploy') {
             steps {
                 script {
-                    def branch = bat(script: 'git rev-parse --abbrev-ref HEAD', returnStdout: true).trim()
+                    def branch = env.BRANCH_NAME ?: bat(script: 'git rev-parse --abbrev-ref HEAD', returnStdout: true).trim()
                     echo "Current branch: ${branch}"
 
                     if (branch == 'main') {
