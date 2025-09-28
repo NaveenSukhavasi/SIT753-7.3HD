@@ -6,6 +6,7 @@ pipeline {
     }
 
     stages {
+
         stage('Checkout') {
             steps {
                 git branch: 'main',
@@ -51,12 +52,29 @@ pipeline {
             steps {
                 echo 'Running security analysis with Bandit...'
                 bat 'venv\\Scripts\\pip install bandit'
+                // run bandit but don’t fail the build if issues are found
                 bat(script: 'venv\\Scripts\\bandit -r . -f html -o security_report.html', returnStatus: true)
             }
             post {
                 always {
                     archiveArtifacts artifacts: 'security_report.html', fingerprint: true
                 }
+            }
+        }
+
+        stage('Deploy') {
+            when {
+                branch 'main'   // only deploy from main branch
+            }
+            steps {
+                echo 'Deploying Flask application locally...'
+                // run flask on port 5000 in background
+                bat '''
+                    call venv\\Scripts\\activate
+                    set FLASK_APP=app.py
+                    start /B venv\\Scripts\\python -m flask run --host=0.0.0.0 --port=5000
+                '''
+                echo 'Application started at http://localhost:5000'
             }
         }
     }
