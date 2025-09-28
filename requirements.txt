@@ -6,3 +6,4 @@ Pygments==2.19.2
 PyYAML==6.0.2
 rich==14.1.0
 stevedore==5.5.0
+Flask==2.3.3
