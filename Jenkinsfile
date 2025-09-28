@@ -7,7 +7,6 @@ pipeline {
     }
 
     stages {
-
         stage('Checkout') {
             steps {
                 git branch: 'main',
@@ -35,9 +34,7 @@ pipeline {
         }
 
         stage('Hello') {
-            steps {
-                echo 'Jenkins is connected to GitHub successfully!'
-            }
+            steps { echo 'Jenkins is connected to GitHub successfully!' }
         }
 
         stage('Code Quality') {
@@ -63,17 +60,11 @@ pipeline {
                     bat 'venv\\Scripts\\python -m bandit -r . -f html -o security_report.html'
                 }
             }
-            post {
-                always {
-                    archiveArtifacts artifacts: 'security_report.html', fingerprint: true
-                }
-            }
+            post { always { archiveArtifacts artifacts: 'security_report.html', fingerprint: true } }
         }
 
         stage('Deploy to Staging') {
-            when {
-                expression { env.BRANCH_NAME == 'main' || !env.BRANCH_NAME }
-            }
+            when { expression { env.BRANCH_NAME == 'main' || !env.BRANCH_NAME } }
             steps {
                 echo 'Deploying application to staging environment...'
                 bat 'docker compose -f docker-compose.staging.yml up -d --build'
@@ -82,9 +73,7 @@ pipeline {
         }
 
         stage('Release to Production') {
-            when {
-                expression { env.BRANCH_NAME == 'main' || !env.BRANCH_NAME }
-            }
+            when { expression { env.BRANCH_NAME == 'main' || !env.BRANCH_NAME } }
             steps {
                 echo 'Promoting application to production...'
                 bat 'docker compose -f docker-compose.prod.yml up -d --build'
@@ -97,28 +86,30 @@ pipeline {
                 script {
                     echo 'Checking if production app is running...'
 
-                    // NOTE: For Windows batch we MUST escape the % in curl's -w format by doubling it.
-                    def response = bat(
-                        script: 'curl -s -o NUL -w "%%{http_code}" http://localhost:%FLASK_PORT%',
+                    def raw = bat(
+                        script: '@curl -s -o NUL -w "%%{http_code}" http://localhost:%FLASK_PORT%',
                         returnStdout: true
-                    ).trim().replaceAll("\\r","")
+                    )
 
-                    echo "curl returned: ${response}"
+                    def lastLine = raw.readLines().collect { it.trim() }.findAll { it }.last()
+                    echo "raw curl output lines: ${raw.readLines().collect { it.trim() }.findAll { it }}"
 
-                    if (response != '200') {
-                        error "ALERT: Production application is NOT responding! HTTP status: ${response}"
+                    def m = (lastLine =~ /(\d{3})$/)
+                    def responseCode = m ? m[0][1] : lastLine
+
+                    echo "Parsed HTTP status: ${responseCode}"
+
+                    if (responseCode != '200') {
+                        error "ALERT: Production application is NOT responding! HTTP status: ${responseCode}"
                     } else {
                         echo 'Production application is healthy. HTTP 200 OK.'
                     }
                 }
             }
         }
-
     }
 
     post {
-        always {
-            echo 'Pipeline finished.'
-        }
+        always { echo 'Pipeline finished.' }
     }
 }
