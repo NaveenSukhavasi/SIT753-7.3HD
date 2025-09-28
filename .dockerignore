@@ -1,0 +1,7 @@
+venv/
+.git
+.gitignore
+*.pyc
+__pycache__/
+*.env
+security_report.html
