@@ -19,9 +19,7 @@ pipeline {
             steps {
                 echo 'Setting up Python environment and installing dependencies...'
                 bat 'python -m venv venv'
-                
                 bat(script: 'venv\\Scripts\\python -m pip install --upgrade pip', returnStatus: true)
-                
                 bat 'venv\\Scripts\\pip install -r requirements.txt'
                 echo 'Build stage completed successfully!'
             }
@@ -68,18 +66,44 @@ pipeline {
             steps {
                 script {
                     def branch = env.BRANCH_NAME ?: bat(script: '@git rev-parse --abbrev-ref HEAD', returnStdout: true).trim()
-                    echo "Current branch (for deploy check): ${branch}"
+                    echo "Current branch: ${branch}"
 
                     if (branch.equalsIgnoreCase('main')) {
                         echo 'Deploying application to staging environment...'
                         bat 'docker compose -f docker-compose.staging.yml up -d --build'
-                        echo 'Deployment completed successfully!'
+                        echo 'Staging deployment completed successfully!'
                     } else {
-                        echo "Skipping deployment: not on main branch."
+                        echo "Skipping staging deployment: not on main branch."
                     }
                 }
             }
         }
+
+        stage('Release') {
+            steps {
+                script {
+                    echo 'Promoting application to production...'
+                    bat 'docker compose -f docker-compose.prod.yml up -d --build'
+                    echo 'Production deployment completed successfully!'
+                }
+            }
+        }
+
+        stage('Monitoring & Alerting') {
+            steps {
+                script {
+                    echo 'Checking if production app is running...'
+                    def response = bat(script: 'curl -s -o NUL -w "%{http_code}" http://localhost:8080', returnStdout: true).trim()
+
+                    if (response != '200') {
+                        error "ALERT: Production application is NOT responding! HTTP status: ${response}"
+                    } else {
+                        echo 'Production application is healthy. HTTP 200 OK.'
+                    }
+                }
+            }
+        }
+
     }
 
     post {
