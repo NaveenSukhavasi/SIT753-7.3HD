@@ -42,11 +42,11 @@ pipeline {
             steps {
                 withSonarQubeEnv('SonarQube') {
                     bat """
-                    sonar-scanner ^
-                        -Dsonar.projectKey=SIT753-7.3HD ^
-                        -Dsonar.sources=. ^
-                        -Dsonar.host.url=http://localhost:9000 ^
-                        -Dsonar.token=%SONAR_QUBE_TOKEN%
+                        sonar-scanner ^
+                            -Dsonar.projectKey=SIT753-7.3HD ^
+                            -Dsonar.sources=. ^
+                            -Dsonar.host.url=http://localhost:9000 ^
+                            -Dsonar.token=%SONAR_QUBE_TOKEN%
                     """
                 }
             }
