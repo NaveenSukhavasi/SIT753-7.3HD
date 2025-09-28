@@ -19,7 +19,9 @@ pipeline {
             steps {
                 echo 'Setting up Python environment and installing dependencies...'
                 bat 'python -m venv venv'
-                bat 'venv\\Scripts\\pip install --upgrade pip'
+                
+                bat(script: 'venv\\Scripts\\python -m pip install --upgrade pip', returnStatus: true)
+                
                 bat 'venv\\Scripts\\pip install -r requirements.txt'
                 echo 'Build stage completed successfully!'
             }
@@ -41,7 +43,6 @@ pipeline {
         stage('Code Quality') {
             steps {
                 withSonarQubeEnv('SonarQube') {
-                    // Use sonar.token instead of deprecated sonar.login
                     bat 'sonar-scanner -Dsonar.projectKey=SIT753-7.3HD ' +
                         '-Dsonar.sources=. ' +
                         '-Dsonar.host.url=http://localhost:9000 ' +
@@ -66,7 +67,7 @@ pipeline {
         stage('Deploy') {
             steps {
                 script {
-                    def branch = bat(script: '@git rev-parse --abbrev-ref HEAD', returnStdout: true).trim()
+                    def branch = env.BRANCH_NAME ?: bat(script: '@git rev-parse --abbrev-ref HEAD', returnStdout: true).trim()
                     echo "Current branch (for deploy check): ${branch}"
 
                     if (branch.equalsIgnoreCase('main')) {
