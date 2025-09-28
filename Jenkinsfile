@@ -52,7 +52,6 @@ pipeline {
             steps {
                 echo 'Running security analysis with Bandit...'
                 bat 'venv\\Scripts\\pip install bandit'
-                // run bandit but don’t fail the build if issues are found
                 bat(script: 'venv\\Scripts\\bandit -r . -f html -o security_report.html', returnStatus: true)
             }
             post {
@@ -62,14 +61,20 @@ pipeline {
             }
         }
 
-	stage('Deploy') {
-   		when { branch 'main' }  // only deploy from main branch
-    		steps {
-       		 echo 'Deploying application to staging environment...'
-       			 // Ensure Docker is installed and Docker Compose file exists in repo
-       			 bat 'docker-compose -f docker-compose.staging.yml up -d --build'
-        		echo 'Deployment completed successfully!'
+        stage('Deploy') {
+            steps {
+                script {
+                    def branch = bat(script: 'git rev-parse --abbrev-ref HEAD', returnStdout: true).trim()
+                    echo "Current branch: ${branch}"
 
+                    if (branch == 'main') {
+                        echo 'Deploying application to staging environment...'
+                        bat 'docker compose -f docker-compose.staging.yml up -d --build'
+                        echo 'Deployment completed successfully!'
+                    } else {
+                        echo "Skipping deployment: not on main branch."
+                    }
+                }
             }
         }
     }
