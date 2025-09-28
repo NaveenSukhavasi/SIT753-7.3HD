@@ -62,19 +62,14 @@ pipeline {
             }
         }
 
-        stage('Deploy') {
-            when {
-                branch 'main'   // only deploy from main branch
-            }
-            steps {
-                echo 'Deploying Flask application locally...'
-                // run flask on port 5000 in background
-                bat '''
-                    call venv\\Scripts\\activate
-                    set FLASK_APP=app.py
-                    start /B venv\\Scripts\\python -m flask run --host=0.0.0.0 --port=5000
-                '''
-                echo 'Application started at http://localhost:5000'
+	stage('Deploy') {
+   		when { branch 'main' }  // only deploy from main branch
+    		steps {
+       		 echo 'Deploying application to staging environment...'
+       			 // Ensure Docker is installed and Docker Compose file exists in repo
+       			 bat 'docker-compose -f docker-compose.staging.yml up -d --build'
+        		echo 'Deployment completed successfully!'
+
             }
         }
     }
