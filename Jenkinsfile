@@ -21,17 +21,17 @@ pipeline {
                 echo 'Setting up Python environment and installing dependencies...'
                 bat 'python -m venv venv'
                 bat 'venv\\Scripts\\python -m pip install --upgrade pip'
-                bat 'venv\\Scripts\\pip install -r requirements.txt'
+                bat 'venv\\Scripts\\python -m pip install -r requirements.txt'
                 echo 'Build stage completed successfully!'
             }
         }
 
         stage('Test') {
             steps {
-                echo 'Starting Flask app in background for integration tests...'
-                bat 'start /B venv\\Scripts\\python app.py'
                 echo 'Running unit tests with coverage...'
-                bat 'venv\\Scripts\\pytest --cov=app --cov-report xml:coverage.xml test_app.py'
+                // Use python -m pytest so the venv executable is recognized
+                bat 'venv\\Scripts\\python -m pip install pytest pytest-cov'
+                bat 'venv\\Scripts\\python -m pytest --cov=app --cov-report xml:coverage.xml test_app.py'
             }
         }
 
@@ -59,9 +59,9 @@ pipeline {
         stage('Security') {
             steps {
                 echo 'Running security analysis with Bandit...'
-                bat 'venv\\Scripts\\pip install bandit'
+                bat 'venv\\Scripts\\python -m pip install bandit'
                 catchError(buildResult: 'UNSTABLE', stageResult: 'UNSTABLE') {
-                    bat 'venv\\Scripts\\bandit -r . -f html -o security_report.html'
+                    bat 'venv\\Scripts\\python -m bandit -r . -f html -o security_report.html'
                 }
             }
             post {
@@ -112,10 +112,6 @@ pipeline {
     post {
         always {
             echo 'Pipeline finished.'
-        }
-        cleanup {
-            echo 'Stopping background Flask app if running...'
-            bat 'taskkill /F /IM python.exe || echo Flask app not running'
         }
     }
 }
