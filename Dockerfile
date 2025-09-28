@@ -5,8 +5,10 @@ RUN useradd --create-home appuser
 WORKDIR /app
 
 COPY app.py requirements.txt /app/
-COPY templates/ /app/templates/
-COPY static/ /app/static/
+
+RUN mkdir -p /app/templates /app/static
+COPY templates/ /app/templates/ || echo "No templates folder, skipping"
+COPY static/ /app/static/ || echo "No static folder, skipping"
 
 RUN pip install --no-cache-dir -r requirements.txt
 
