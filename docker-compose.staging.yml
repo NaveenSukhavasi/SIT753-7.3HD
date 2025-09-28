@@ -1,12 +1,7 @@
-version: '3.9'  
-
 services:
   web:
-    build: . 
-    container_name: flask_app_staging
+    build: .           
     ports:
-      - "5000:5000"  
+      - "5000:5000"
     environment:
-      - FLASK_ENV=development
-    volumes:
-      - .:/app  
+      FLASK_ENV: development
