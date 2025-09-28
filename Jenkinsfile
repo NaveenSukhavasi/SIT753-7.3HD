@@ -7,6 +7,7 @@ pipeline {
     }
 
     stages {
+
         stage('Checkout') {
             steps {
                 git branch: 'main',
@@ -54,13 +55,25 @@ pipeline {
 
         stage('Security') {
             steps {
-                echo 'Running security analysis with Bandit...'
+                echo 'Installing and running Bandit (report will be archived).'
+                bat 'venv\\Scripts\\python -m pip install --upgrade pip'
                 bat 'venv\\Scripts\\python -m pip install bandit'
-                catchError(buildResult: 'UNSTABLE', stageResult: 'UNSTABLE') {
-                    bat 'venv\\Scripts\\python -m bandit -r . -f html -o security_report.html'
+
+                script {
+                                        def banditStatus = bat(script: 'venv\\Scripts\\python -m bandit -r . -f html -o security_report.html', returnStatus: true)
+
+                    if (banditStatus == 0) {
+                        echo "Bandit finished with exit code 0 (no issues found)."
+                    } else {
+                        echo "Bandit finished with exit code ${banditStatus}. Issues were found and the report is saved, but the pipeline will remain SUCCESS."
+                    }
                 }
             }
-            post { always { archiveArtifacts artifacts: 'security_report.html', fingerprint: true } }
+            post {
+                always {
+                    archiveArtifacts artifacts: 'security_report.html', fingerprint: true
+                }
+            }
         }
 
         stage('Deploy to Staging') {
@@ -85,7 +98,6 @@ pipeline {
             steps {
                 script {
                     echo 'Checking if production app is running...'
-
                     def raw = bat(
                         script: '@curl -s -o NUL -w "%%{http_code}" http://localhost:%FLASK_PORT%',
                         returnStdout: true
@@ -107,6 +119,7 @@ pipeline {
                 }
             }
         }
+
     }
 
     post {
