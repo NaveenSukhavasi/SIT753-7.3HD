@@ -93,7 +93,7 @@ pipeline {
             steps {
                 script {
                     echo 'Checking if production app is running...'
-                    def response = bat(script: 'curl -s -o NUL -w "%{http_code}" http://localhost:8080', returnStdout: true).trim()
+                    def response = bat(script: 'curl -s -o NUL -w "%{http_code}" http://localhost:8081', returnStdout: true).trim()
 
                     if (response != '200') {
                         error "ALERT: Production application is NOT responding! HTTP status: ${response}"
