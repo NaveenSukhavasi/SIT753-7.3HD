@@ -1,0 +1,9 @@
+version: '3.8'
+services:
+  web:
+    image: sit753-73hd-pipeline-web:latest
+    build: .
+    ports:
+      - "8080:8080"
+    environment:
+      - ENV=production
