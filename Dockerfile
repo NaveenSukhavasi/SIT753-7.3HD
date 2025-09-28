@@ -9,8 +9,8 @@ RUN mkdir -p /app/templates /app/static
 COPY templates/ /app/templates/
 COPY static/ /app/static/
 
-RUN pip install --no-cache-dir --upgrade pip
-RUN pip install --no-cache-dir -r requirements.txt
+RUN pip install --no-cache-dir --upgrade pip \
+    && pip install --no-cache-dir -r requirements.txt
 
 USER appuser
 
