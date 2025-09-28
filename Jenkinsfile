@@ -19,6 +19,7 @@ pipeline {
             steps {
                 echo 'Setting up Python environment and installing dependencies...'
                 bat 'python -m venv venv'
+                bat 'venv\\Scripts\\pip install --upgrade pip'
                 bat 'venv\\Scripts\\pip install -r requirements.txt'
                 echo 'Build stage completed successfully!'
             }
@@ -40,10 +41,11 @@ pipeline {
         stage('Code Quality') {
             steps {
                 withSonarQubeEnv('SonarQube') {
+                    // Use sonar.token instead of deprecated sonar.login
                     bat 'sonar-scanner -Dsonar.projectKey=SIT753-7.3HD ' +
                         '-Dsonar.sources=. ' +
                         '-Dsonar.host.url=http://localhost:9000 ' +
-                        "-Dsonar.login=${env.SONAR_QUBE_TOKEN}"
+                        "-Dsonar.token=${env.SONAR_QUBE_TOKEN}"
                 }
             }
         }
@@ -64,10 +66,10 @@ pipeline {
         stage('Deploy') {
             steps {
                 script {
-                    def branch = env.BRANCH_NAME ?: bat(script: 'git rev-parse --abbrev-ref HEAD', returnStdout: true).trim()
-                    echo "Current branch: ${branch}"
+                    def branch = bat(script: '@git rev-parse --abbrev-ref HEAD', returnStdout: true).trim()
+                    echo "Current branch (for deploy check): ${branch}"
 
-                    if (branch == 'main') {
+                    if (branch.equalsIgnoreCase('main')) {
                         echo 'Deploying application to staging environment...'
                         bat 'docker compose -f docker-compose.staging.yml up -d --build'
                         echo 'Deployment completed successfully!'
@@ -76,6 +78,12 @@ pipeline {
                     }
                 }
             }
+        }
+    }
+
+    post {
+        always {
+            echo 'Pipeline finished.'
         }
     }
 }
